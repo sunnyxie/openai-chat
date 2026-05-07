@@ -79,10 +79,17 @@ curl -X POST http://localhost:5000/api/chat \
      -d '{"message": "What is an API?"}'
 ```
 
-### Step 6 — run the react frontend (details on its own README.md file)
-cd openai-chat\src\OpenAiChat.Frontend
+### Step 6 — run the react frontend (details on project's own README.md file)
+```bash
+# Navigate to the frontend project
+cd src/OpenAiChat.Frontend
+
+# Install dependencies
 npm install
+
+# Start the application
 npm run dev
+```
 
 Expected response:
 ```
