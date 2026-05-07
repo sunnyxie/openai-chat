@@ -1,50 +1,14 @@
-# OpenAI Chat — ASP.NET Core 8 Backend
+# 1. OpenAI Chat — ASP.NET Core 8 Backend
 
 A clean, production-ready ASP.NET Core 8 Web API that proxies chat messages
 to the OpenAI API. Includes Polly resilience policies, Swagger UI, structured
-logging, global error handling, Docker support, and an xUnit test suite.
+logging, global error handling, CORS, Docker support, and an xUnit test suite.
 
----
+# 2. OpenAI Chat — React + Vite Frontend 
 
-## Project Structure
-
-```
-openai-api/
-├── OpenAiChat.sln
-├── Dockerfile
-├── docker-compose.yml
-├── .dockerignore
-├── .github/
-│   └── workflows/
-│       └── ci.yml                  ← GitHub Actions: build + test + docker
-└── src/
-    ├── OpenAiChat.Api/             ← Main Web API project
-    │   ├── Configuration/
-    │   │   └── OpenAiOptions.cs    ← Strongly-typed settings (model, tokens, prompts)
-    │   ├── Controllers/
-    │   │   └── ChatController.cs   ← POST /api/chat
-    │   ├── Middleware/
-    │   │   └── GlobalExceptionMiddleware.cs   ← Unified error responses
-    │   ├── Models/
-    │   │   └── ChatModels.cs       ← Request / Response / Error DTOs
-    │   ├── Services/
-    │   │   ├── IChatService.cs
-    │   │   ├── OpenAiChatService.cs  ← OpenAI SDK wrapper
-    │   │   ├── ChatServiceException.cs
-    │   │   └── ResiliencePolicies.cs ← Polly retry + timeout registry
-    │   ├── appsettings.json
-    │   ├── appsettings.Development.json
-    │   └── Program.cs              ← DI composition root
-    └── OpenAiChat.Tests/           ← xUnit test project
-        ├── Controllers/
-        │   └── ChatControllerTests.cs
-        ├── Integration/
-        │   └── ChatEndpointTests.cs
-        └── Services/
-            └── ResiliencePoliciesTests.cs
-```
-
----
+A clean, TypeScript-based React (Vite) app that lets users send messages to a C# API
+which forwards them to OpenAI, then displays a full history of Q&A pairs.
+Located at: OpenAiChat.Frontend
 
 ## Prerequisites
 
@@ -53,7 +17,8 @@ openai-api/
 | .NET SDK    | 8.0            |
 | Docker      | 24.x (optional) |
 | OpenAI key  | Any valid key  |
-
+| Node.js | ≥ 18.x |
+| npm | ≥ 9.x (bundled with Node) |
 ---
 
 ## Step-by-Step Setup (Local)
@@ -61,7 +26,7 @@ openai-api/
 ### Step 1 — Clone / download the project
 
 ```bash
-cd openai-api
+cd openai-chat\src\OpenAiChat.Api
 ```
 
 ### Step 2 — Set your OpenAI API key
@@ -94,21 +59,15 @@ Edit `src/OpenAiChat.Api/appsettings.json`:
 }
 ```
 
-Or override without touching code using an environment variable:
-
-```bash
-export OpenAI__ModelName=gpt-4o
-```
-
 ### Step 4 — Restore and run
 
 ```bash
 dotnet restore OpenAiChat.sln
 
-dotnet run --project src/OpenAiChat.Api/OpenAiChat.Api.csproj
+dotnet run --project src/OpenAiChat.Api/OpenAiChat.Api.csproj --urls "http://localhost:5000;https://localhost:5001"
 ```
 
-The API starts on **http://localhost:5000** by default.
+The API starts on **http://localhost:5000**, and the react front will communicate on this port.
 
 Swagger UI is available at the root: **http://localhost:5000/**
 
@@ -120,13 +79,27 @@ curl -X POST http://localhost:5000/api/chat \
      -d '{"message": "What is an API?"}'
 ```
 
+### Step 6 — run the react frontend (details on its own README.md file)
+cd openai-chat\src\OpenAiChat.Frontend
+npm install
+npm run dev
+
 Expected response:
-```json
-{
-  "response": "An API (Application Programming Interface) is..."
-}
+```
+  react main page pops up, and you are able to ask questions and get responses from the backend API server.
 ```
 
+### Other information
+ Any assumptions made
+  the docker image and its deployment part is not fully tested yet, 
+  assume the application would run on local for testing/evaluation purpose!
+
+ What you would improve if this were production-ready
+  1. adding the authentication and authorization with Azure Entra or Google IAM (supports SSO, using OAUTH 2.0 and OIDC)
+  2. using OpenAI agent mode, and chat in threads.
+  3. adding the API keys on github secrets, make it secure and easy to share among team members.
+  3. fully CI/CD deployment and docker support.
+  5. UI update/optimization
 ---
 
 ## Running Unit Tests

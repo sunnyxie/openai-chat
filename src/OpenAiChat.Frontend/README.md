@@ -44,7 +44,7 @@ openai-chat/
 ### Step 1 — Clone / download the project
 
 ```bash
-cd openai.frontend
+cd openai-chat\src\OpenAiChat.Frontend
 ```
 
 ### Step 2 — Install dependencies
@@ -55,28 +55,8 @@ npm install
 
 > This installs React, Vite, TypeScript, PrimeReact, PrimeFlex, and PrimeIcons.
 
-### Step 3 — Start your C# API
 
-Make sure your C# backend is running and listening on **port 5000**:
-
-```bash
-# From your C# project folder:
-dotnet run
-# or:
-dotnet watch run
-```
-
-Your C# API must expose:
-
-```
-POST http://localhost:5000/api/chat
-Content-Type: application/json
-
-Body:  { "message": "Your question here" }
-Response: { "answer": "OpenAI response here" }
-```
-
-### Step 4 — Start the React dev server
+### Step 3 — Start the React dev server
 
 ```bash
 npm run dev
