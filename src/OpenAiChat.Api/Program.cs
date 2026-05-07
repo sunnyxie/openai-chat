@@ -42,6 +42,7 @@ var policyLogger = startupLoggerFactory.CreateLogger("ResiliencePolicies");
 var policyRegistry = new PolicyRegistry();
 ResiliencePolicies.RegisterPolicies(policyRegistry, resilienceOpts, policyLogger);
 
+
 // Register the registry as a singleton so it can be injected anywhere
 builder.Services.AddSingleton<IReadOnlyPolicyRegistry<string>>(policyRegistry);
 builder.Services.AddSingleton<IPolicyRegistry<string>>(policyRegistry);
@@ -72,6 +73,7 @@ builder.Services.AddSwaggerGen(options =>
     if (File.Exists(xmlPath))
         options.IncludeXmlComments(xmlPath);
 });
+
 
 // ── CORS (allow the Vite dev server) ─────────────────────────────────────────
 
@@ -107,6 +109,10 @@ app.UseHttpsRedirection();
 app.UseCors("ViteDev");
 app.UseAuthorization();
 app.MapControllers();
+
+// json settings validation. (testing)
+var resilienceSection = builder.Configuration.GetSection("ResiliencePolicy");
+Console.WriteLine($"dbug: RetryCount: {resilienceSection["RetryCount"]}");
 
 app.Run();
 
