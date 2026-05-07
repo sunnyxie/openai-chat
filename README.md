@@ -26,7 +26,10 @@ Located at: OpenAiChat.Frontend
 ### Step 1 — Clone / download the project
 
 ```bash
-cd openai-chat\src\OpenAiChat.Api
+git clone https://github.com/sunnyxie/openai-chat.git
+
+# cd to the root directory
+cd openai-chat/
 ```
 
 ### Step 2 — Set your OpenAI API key
@@ -51,6 +54,7 @@ set OPENAI_API_KEY=sk-proj-...
 ### Step 3 — (Optional) Change the model name
 
 Edit `src/OpenAiChat.Api/appsettings.json`:
+(if run on local environment, edit appsettings.Development.json instead.)
 
 ```json
 "OpenAI": {
@@ -62,8 +66,11 @@ Edit `src/OpenAiChat.Api/appsettings.json`:
 ### Step 4 — Restore and run
 
 ```bash
+
+# downloads and resolves the NuGet packages of your project
 dotnet restore OpenAiChat.sln
 
+# run api endpoint on specified ports
 dotnet run --project src/OpenAiChat.Api/OpenAiChat.Api.csproj --urls "http://localhost:5000;https://localhost:5001"
 ```
 
@@ -79,7 +86,7 @@ curl -X POST http://localhost:5000/api/chat \
      -d '{"message": "What is an API?"}'
 ```
 
-### Step 6 — run the react frontend (details on project's own README.md file)
+### Step 6 — Run the react frontend (details on project's own README.md file)
 ```bash
 # Navigate to the frontend project
 cd src/OpenAiChat.Frontend
