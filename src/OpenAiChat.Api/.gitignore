@@ -1,0 +1,110 @@
+# ══════════════════════════════════════════════════════════════════
+#  .gitignore — Visual Studio / .NET 8 Solution
+# ══════════════════════════════════════════════════════════════════
+
+# ── Build output ──────────────────────────────────────────────────
+[Bb]in/
+[Oo]bj/
+[Oo]ut/
+[Ll]og/
+[Ll]ogs/
+build/
+publish/
+
+# ── Visual Studio files ───────────────────────────────────────────
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.userprefs
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# JetBrains Rider
+.idea/
+*.sln.iml
+
+# ── NuGet ─────────────────────────────────────────────────────────
+*.nupkg
+*.snupkg
+*.symbols.nupkg
+# NuGet v2 packages folder (legacy)
+packages/
+# NuGet.Config with credentials — never commit
+NuGet.Config
+
+# ── .NET tooling ──────────────────────────────────────────────────
+project.fragment.lock.json
+artifacts/
+# MSBuild binary log
+*.binlog
+# dotnet-ef migrations bundle
+efbundle
+efbundle.exe
+
+# ── Test results & coverage ───────────────────────────────────────
+TestResults/
+[Tt]est[Rr]esult*/
+*.trx
+*.coverage
+*.coveragexml
+coverage/
+coverage-report/
+lcov.info
+
+# ── Secrets — NEVER commit API keys or connection strings ─────────
+**/appsettings.Secrets.json
+**/appsettings.Local.json
+**/Properties/launchSettings.json
+**/secrets.json
+.env
+.env.*
+!.env.example
+
+# ── ASP.NET Core data protection keys (runtime-generated) ─────────
+**/DataProtection-Keys/
+
+# ── Publish profiles ──────────────────────────────────────────────
+**/Properties/PublishProfiles/
+*.pubxml
+*.pubxml.user
+
+# ── Docker ────────────────────────────────────────────────────────
+docker-compose.override.yml
+
+# ── OS generated ──────────────────────────────────────────────────
+# macOS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+$RECYCLE.BIN/
+# Linux
+*~
+
+# ── Temporary files ───────────────────────────────────────────────
+*.tmp
+*.temp
+*.bak
+*.swp
+*.orig
+*#
+
+# ── Crash dumps ───────────────────────────────────────────────────
+*.dmp
+*.mdmp
+
+# ── StyleCop / Roslyn analyser caches ─────────────────────────────
+StyleCopReport.xml
+*.cache
+!**/Properties/*.cache
