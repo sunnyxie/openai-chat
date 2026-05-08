@@ -32,7 +32,7 @@ public sealed class ChatControllerTests
     {
         // Arrange
         const string userMessage = "What is an API?";
-        const string aiAnswer   = "An API allows software to talk to other software.";
+        const string aiAnswer = "An API allows software to talk to other software.";
 
         _mockChatService
             .Setup(s => s.GetChatResponseAsync(userMessage, It.IsAny<CancellationToken>()))
@@ -47,6 +47,31 @@ public sealed class ChatControllerTests
         var okResult = actionResult.Should().BeOfType<OkObjectResult>().Subject;
         var response = okResult.Value.Should().BeOfType<ChatResponse>().Subject;
         response.Response.Should().Be(aiAnswer);
+
+        _mockChatService.VerifyAll();
+    }
+
+    [Fact]
+    public async Task PostAsync_ValidRequest_CallsChatServiceOnce()
+    {
+        // Arrange
+        const string userMessage = "What is an API?";
+        const string aiAnswer = "An API allows software to talk to other software.";
+
+        _mockChatService
+            .Setup(s => s.GetChatResponseAsync(userMessage, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(aiAnswer);
+
+        var request = new ChatRequest { Message = userMessage };
+
+        // Act
+        var actionResult = await _sut.PostAsync(request, CancellationToken.None);
+
+        // Assert
+        _mockChatService.Verify(
+           s => s.GetChatResponseAsync(userMessage, It.IsAny<CancellationToken>()),
+           Times.Exactly(1)
+       );
 
         _mockChatService.VerifyAll();
     }

@@ -90,7 +90,12 @@ builder.Services.AddCors(options =>
 //  Middleware pipelines
 // ══════════════════════════════════════════════════════════════════════════════
 
+// Add health endpoint
+builder.Services.AddHealthChecks();
+
 var app = builder.Build();
+
+app.MapHealthChecks("/health");
 
 // Global exception handler must be first in the pipeline
 app.UseGlobalExceptionHandler();

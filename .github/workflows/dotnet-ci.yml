@@ -1,0 +1,236 @@
+name: .NET Core CI — Build, Test, Analyze & Docker
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  DOTNET_VERSION: '8.0.x'           # ← change to your target version
+  PROJECT_PATH: './src/OpenAiChat.Api'        # ← path to your .csproj folder
+  TEST_PATH: './src/OpenAiChat.Tests'   # ← path to your test project
+  SOLUTION_FILE: './OpenAiChat.sln'       # ← your .sln file (or use csproj path)
+  DOCKER_IMAGE_NAME: openai-chat-api   # ← your image name
+  REGISTRY: ghcr.io                  # ← GitHub Container Registry (or docker.io)
+
+jobs:
+  # ─────────────────────────────────────────────────
+  # JOB 1 — Build & Unit Tests
+  # ─────────────────────────────────────────────────
+  build-and-test:
+    name: 🔨 Build & Unit Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up .NET SDK ${{ env.DOTNET_VERSION }}
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      # Cache NuGet packages to speed up subsequent runs
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/*.sln') }}
+          restore-keys: |
+            nuget-${{ runner.os }}-
+
+      - name: Restore dependencies
+        run: dotnet restore ${{ env.SOLUTION_FILE }}
+
+      - name: Build (Release)
+        run: |
+          dotnet build ${{ env.SOLUTION_FILE }} \
+            --configuration Release \
+            --no-restore \
+            -warnaserror   # treat warnings as errors — optional but recommended
+
+      - name: Run unit tests with coverage
+        run: |
+          dotnet test ${{ env.TEST_PATH }} \
+            --configuration Release \
+            --no-build \
+            --verbosity normal \
+            --logger "trx;LogFileName=test-results.trx" \
+            --collect:"XPlat Code Coverage" \
+            --results-directory ./coverage
+
+      # Publish test results to the GitHub Actions UI
+      - name: Publish test results
+        uses: dorny/test-reporter@v1
+        if: always()     # 
+        with:
+          name: Unit Test Results
+          path: ./coverage/*.trx
+          reporter: dotnet-trx
+
+      # Upload coverage report as an artifact for inspection
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if:  ${{ !env.ACT }}           #  always()
+        with:
+          name: coverage-report
+          path: ./coverage/**/coverage.cobertura.xml
+          retention-days: 7
+
+  # ─────────────────────────────────────────────────
+  # JOB 2 — Static Code Analysis
+  # ─────────────────────────────────────────────────
+  static-analysis:
+    name: 🔍 Static Code Analysis
+    runs-on: ubuntu-latest
+    needs: build-and-test   # only run if build & tests pass
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # SonarCloud requires full history
+
+      - name: Set up .NET SDK ${{ env.DOTNET_VERSION }}
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/*.sln') }}
+          restore-keys: |
+            nuget-${{ runner.os }}-
+
+      - name: Restore dependencies
+        run: dotnet restore ${{ env.SOLUTION_FILE }}
+
+      # ── Roslyn / built-in .NET analyzers ──────────────────────────
+      # These run automatically with the build when you have
+      # <EnableNETAnalyzers>true</EnableNETAnalyzers> in your .csproj.
+      # Using -warnaserror here causes the job to FAIL on any analyzer issue.
+      - name: Run Roslyn analyzers
+        run: |
+          dotnet build ${{ env.SOLUTION_FILE }} \
+            --configuration Release \
+            --no-restore \
+            -warnaserror \
+            /p:RunAnalyzersDuringBuild=true \
+            /p:EnforceCodeStyleInBuild=true
+
+      # ── dotnet-format — code style / formatting ────────────────────
+      - name: Install dotnet-format
+        run: dotnet tool install -g dotnet-format
+
+      - name: Check code formatting
+        run: |
+          dotnet format ${{ env.SOLUTION_FILE }} \
+            --verify-no-changes || true \
+            --verbosity diagnostic
+
+      # ── SonarCloud analysis (optional — remove if not using Sonar) ─
+      # Required secrets: SONAR_TOKEN, SONAR_ORGANIZATION, SONAR_PROJECT_KEY
+      # Sign up free at https://sonarcloud.io
+      - name: SonarCloud Scan
+        if: ${{ vars.SONAR_ENABLED == 'true' }}   # set this repo variable to opt in
+        uses: SonarSource/sonarcloud-github-action@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: >
+            -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }}
+            -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }}
+            -Dsonar.sources=./src
+            -Dsonar.tests=./tests
+            -Dsonar.cs.opencover.reportsPaths=./coverage/**/coverage.cobertura.xml
+
+      # ── Security vulnerability scan ────────────────────────────────
+      - name: Scan for vulnerable NuGet packages
+        run: dotnet list ${{ env.SOLUTION_FILE }} package --vulnerable --include-transitive
+
+  # ─────────────────────────────────────────────────
+  # JOB 3 — Build & Push Docker Image
+  # Only runs on push to main (not on PRs) AND only
+  # if both previous jobs passed.
+  # ─────────────────────────────────────────────────
+  docker:
+    name: 🐳 Build & Push Docker Image
+    runs-on: ubuntu-latest
+    needs: [build-and-test, static-analysis]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    permissions:
+      contents: read
+      packages: write   # needed to push to GitHub Container Registry
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Build a short SHA tag for traceability: e.g. "sha-a1b2c3d"
+      - name: Generate image tags
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.DOCKER_IMAGE_NAME }}
+          tags: |
+            type=sha,prefix=sha-,format=short
+            type=raw,value=latest,enable=true
+            type=ref,event=branch
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Log in to GitHub Container Registry (ghcr.io)
+      # Switch to docker/login-action with docker.io if using Docker Hub
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Build the image AND run a quick smoke test before pushing
+      - name: Build Docker image (test stage)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: false     # don't push yet — validate first
+          load: true
+          tags: ${{ env.DOCKER_IMAGE_NAME }}:smoke-test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Smoke test — container starts and responds
+        run: |
+          docker run -d --name smoke -p 8080:8080 \
+            -e ASPNETCORE_ENVIRONMENT=Development \
+            ${{ env.DOCKER_IMAGE_NAME }}:smoke-test
+          sleep 5
+          curl --fail --retry 3 --retry-delay 2 http://localhost:8080/health || \
+            (docker logs smoke && exit 1)
+          docker stop smoke && docker rm smoke
+
+      # All checks passed — push the real image
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            BUILD_VERSION=${{ github.sha }}
+
+      - name: Print image digest
+        run: |
+          echo "✅ Image pushed successfully"
+          echo "Tags: ${{ steps.meta.outputs.tags }}"
